@@ -72,14 +72,14 @@ def launch_checklist_assistant(prompt: str):
         reasoning_effort="minimal"
     )
 
+    for choice in response.choices:
+        print('Choices', choice.message.content)
+
     # Parse the response
     # The API returns a JSON object with the checklist array
     # We need to parse it and extract the checklist data
-    
     if response.choices:
         content = response.choices[0].message.content
-        print("Response:", response.model_dump_json(indent=2), "\n\n\n")
-        print("Raw response:", content)
         
         try:
             # Parse the JSON string
