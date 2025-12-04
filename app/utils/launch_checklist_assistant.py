@@ -8,54 +8,52 @@ client = OpenAI(
 )
 
 def launch_checklist_assistant(prompt: str):
-    
     system_promt = """
     You are a helpful guide. You create complete checklists for any project, task, event, journey, or activity.
 
-    IMPORTANT: You MUST respond with ONLY a JSON array.  
-    No explanations, no extra fields, no markdown, no commentary — ONLY the JSON array.
+    IMPORTANT: You MUST respond with ONLY a JSON object.  
+    No explanations, no extra text, no markdown, no commentary — ONLY the JSON object.
 
     MUST follow this exact structure:
-
-    [
-        {
-            "heading": "<Heading 1>",
-            "items": [
-                "<Item 1>",
-                "<Item 2>",
-                "<Item 3>",
-                ...
-                "<Item N>"
-            ]
-        },
-        {
-            "heading": "<Heading 2>",
-            "items": [
-                "<Item 1>",
-                "<Item 2>",
-                "<Item 3>",
-                ...
-                "<Item N>"
-            ]
-        },
-        {
-            "heading": "<Heading 3>",
-            "items": [
-                "<Item 1>",
-                "<Item 2>",
-                "<Item 3>",
-                ...
-                "<Item N>"
-            ]
-        }
-    ]
+    {
+        "checklists": [
+            {
+                "heading": "<Heading 1>",
+                "items": [
+                    "<Item 1>",
+                    "<Item 2>",
+                    "<Item 3>",
+                    "<Item N>"
+                ]
+            },
+            {
+                "heading": "<Heading 2>",
+                "items": [
+                    "<Item 1>",
+                    "<Item 2>",
+                    "<Item 3>",
+                    "<Item N>"
+                ]
+            },
+            {
+                "heading": "<Heading 3>",
+                "items": [
+                    "<Item 1>",
+                    "<Item 2>",
+                    "<Item 3>",
+                    "<Item N>"
+                ]
+            }
+        ]
+    }
 
     Rules:
-    - You MUST always provide **3 or more headings** — never only one.
-    - MUST use only: "heading" and "items".
-    - MUST be accurate, concise, and exhaustive.
-    - MUST include all relevant checklist items.
-    - MUST output a valid JSON array.
+    - You MUST use only: "checklists" (array), "heading" and "items" keys.
+    - You MUST be accurate, concise, and exhaustive.
+    - You MUST include all relevant and all possible checklist items.
+    - You MUST try not to miss out any relevant checklist items.
+    - You MUST output a valid JSON object.
+    - split the checklist into multiple headings, if possible.
     """
 
     messages=[
@@ -64,16 +62,17 @@ def launch_checklist_assistant(prompt: str):
         {"role": "user", "content": prompt}
     ]
 
-    response = client.chat.completions.create(
-        # model="openai/gpt-oss-20b:free",
-        model="openai/gpt-3.5-turbo",
-        messages=messages,
-        response_format={"type": "json_object"},
-        reasoning_effort="minimal"
-    )
-
-    for choice in response.choices:
-        print('Choices', choice.message.content)
+    try:
+        response = client.chat.completions.create(
+            model="openai/gpt-oss-20b:free",
+            # model="openai/gpt-3.5-turbo",
+            messages=messages,
+            response_format={"type": "json_object"}
+        )
+    except Exception as e:
+        print(f"OpenRouter API error: {e}")
+        print(f"Error type: {type(e)}")
+        return []
 
     # Parse the response
     # The API returns a JSON object with the checklist array
@@ -85,25 +84,12 @@ def launch_checklist_assistant(prompt: str):
             # Parse the JSON string
             parsed_data = json.loads(content)
             
-            # The API can return different formats:
-            # 1. A single checklist object: {"heading": "...", "items": [...]}
-            # 2. An array of checklist objects: [{"heading": "...", "items": [...]}, ...]
-            # 3. A wrapper object: {"checklist": [...]}
-            
-            if isinstance(parsed_data, dict):
-                # Check if it has "heading" and "items" - it's a single checklist
-                if "heading" in parsed_data and "items" in parsed_data:
-                    checklist = [parsed_data]  # Wrap in array
-                # Check if it has a "checklist" key
-                elif "checklist" in parsed_data:
-                    checklist = parsed_data["checklist"]
-                    # Ensure it's a list
-                    if not isinstance(checklist, list):
-                        checklist = [checklist]
-                else:
-                    # Try to extract the first value if it looks like a wrapper
-                    first_value = list(parsed_data.values())[0] if parsed_data else []
-                    checklist = first_value if isinstance(first_value, list) else [first_value]
+            # Extract the checklists array from the response
+            if isinstance(parsed_data, dict) and "checklists" in parsed_data:
+                checklist = parsed_data["checklists"]
+                # Ensure it's a list
+                if not isinstance(checklist, list):
+                    checklist = [checklist]
             elif isinstance(parsed_data, list):
                 # If it's already a list, use it directly
                 checklist = parsed_data
