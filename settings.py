@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str
     OPEN_ROUTER_API_KEY: str
+    OPEN_WEATHER_API_KEY: str
 
     class Config:
         env_file = ".env"
